@@ -1,0 +1,49 @@
+# ============================================================
+# .gitignore — ai-dev-env-bedrock
+# ============================================================
+
+# ── Terraform ────────────────────────────────────────────────
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.d/
+*.tfvars
+!terraform.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ── Docker / Environment ──────────────────────────────────────
+docker/.env
+.env
+.env.*
+!.env.example
+
+# ── SSH Keys ─────────────────────────────────────────────────
+*.pem
+*.key
+id_rsa
+id_ed25519
+*.pub
+
+# ── AWS Credentials ──────────────────────────────────────────
+.aws/
+credentials
+
+# ── nginx certs ──────────────────────────────────────────────
+docker/nginx/certs/
+
+# ── OS / Editor ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/

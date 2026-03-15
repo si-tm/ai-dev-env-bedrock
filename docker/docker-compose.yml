@@ -1,0 +1,57 @@
+# ============================================================
+# docker-compose.yml — AI Dev Environment
+# Usage: docker compose up -d
+# ============================================================
+
+version: "3.9"
+
+services:
+  ai-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ai-dev-env
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"   # code-server (localhost only; use SSH tunnel / nginx for HTTPS)
+    volumes:
+      - workspace:/home/developer/workspace
+      - /var/run/docker.sock:/var/run/docker.sock   # Docker-in-Docker CLI
+      - ${HOME}/.aws:/home/developer/.aws:ro         # AWS credentials (read-only)
+    environment:
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-ap-northeast-1}
+      - AWS_REGION=${AWS_DEFAULT_REGION:-ap-northeast-1}
+      # code-server password — override via .env or environment variable
+      - PASSWORD=${CODE_SERVER_PASSWORD:-changeme-set-in-dotenv}
+      # Claude Code: use Bedrock provider
+      - CLAUDE_CODE_USE_BEDROCK=1
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-us.anthropic.claude-sonnet-4-5}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── nginx reverse proxy (HTTPS termination) ──────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: ai-dev-nginx
+    restart: unless-stopped
+    depends_on:
+      - ai-dev
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - nginx_logs:/var/log/nginx
+    profiles:
+      - https   # only started with: docker compose --profile https up
+
+volumes:
+  workspace:
+    driver: local
+  nginx_logs:
+    driver: local
