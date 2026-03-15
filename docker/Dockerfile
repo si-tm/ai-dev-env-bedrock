@@ -76,7 +76,8 @@ WORKDIR /home/developer
 
 # ── code-server config ───────────────────────────────────────
 RUN mkdir -p /home/developer/.config/code-server
-COPY --chown=developer:developer config/code-server-config.yaml \
+# context=リポジトリルート(..) なので docker/ プレフィックスが必要
+COPY --chown=developer:developer docker/config/code-server-config.yaml \
     /home/developer/.config/code-server/config.yaml
 
 # ── Shell helpers ────────────────────────────────────────────
@@ -95,7 +96,8 @@ RUN mkdir -p /home/developer/workspace
 EXPOSE 8080
 
 # ── Entrypoint ───────────────────────────────────────────────
-COPY --chown=developer:developer ../scripts/start.sh /usr/local/bin/start.sh
+# context=リポジトリルート(..) なので scripts/ をそのまま参照できる
+COPY --chown=developer:developer scripts/start.sh /usr/local/bin/start.sh
 RUN sudo chmod +x /usr/local/bin/start.sh
 
 CMD ["/usr/local/bin/start.sh"]
