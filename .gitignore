@@ -2,19 +2,17 @@
 # .gitignore — ai-dev-env-bedrock
 # ============================================================
 
-# ── Terraform ────────────────────────────────────────────────
+# ── CloudFormation ───────────────────────────────────────────
+cfn/parameters.json        # 実際のパラメータ（シークレット含む）
+!cfn/parameters.json.example
+
+# ── Terraform (旧構成・念のため残す) ─────────────────────────
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
-terraform.tfstate.d/
 *.tfvars
 !terraform.tfvars.example
-crash.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
 
 # ── Docker / Environment ──────────────────────────────────────
 docker/.env
@@ -27,7 +25,6 @@ docker/.env
 *.key
 id_rsa
 id_ed25519
-*.pub
 
 # ── AWS Credentials ──────────────────────────────────────────
 .aws/

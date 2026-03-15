@@ -7,38 +7,50 @@ on:
     branches: [main]
 
 jobs:
-  # ── Terraform Lint & Validate ────────────────────────────────
-  terraform:
-    name: Terraform Validate
+  # ── CloudFormation Lint & Validate ────────────────────────
+  cfn-lint:
+    name: CloudFormation Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          terraform_version: "~1.6"
+          python-version: "3.12"
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+      - name: Install cfn-lint
+        run: pip install cfn-lint
 
-      - name: Terraform Init (no backend)
-        run: terraform init -backend=false
+      - name: cfn-lint
+        run: cfn-lint cfn/template.yaml
 
-      - name: Terraform Validate
-        run: terraform validate
+  cfn-validate:
+    name: CloudFormation Validate (AWS)
+    runs-on: ubuntu-latest
+    needs: cfn-lint
 
-      - name: tflint
-        uses: terraform-linters/setup-tflint@v4
+    permissions:
+      id-token: write   # OIDC
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          tflint_version: latest
-      - run: tflint --init && tflint
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
 
-  # ── Dockerfile Lint ──────────────────────────────────────────
+      - name: Validate CloudFormation template
+        run: |
+          aws cloudformation validate-template \
+            --template-body file://cfn/template.yaml \
+            --region ap-northeast-1
+
+  # ── Dockerfile Lint ──────────────────────────────────────
   docker-lint:
     name: Dockerfile Lint
     runs-on: ubuntu-latest
@@ -52,7 +64,7 @@ jobs:
           dockerfile: docker/Dockerfile
           failure-threshold: warning
 
-  # ── Docker Build Test ────────────────────────────────────────
+  # ── Docker Build Test ────────────────────────────────────
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -74,7 +86,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Shell Script Lint ────────────────────────────────────────
+  # ── Shell Script Lint ────────────────────────────────────
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
@@ -88,7 +100,7 @@ jobs:
           scandir: scripts
           severity: warning
 
-  # ── Security Scan ────────────────────────────────────────────
+  # ── Security Scan ────────────────────────────────────────
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -105,9 +117,9 @@ jobs:
           exit-code: 1
           ignore-unfixed: true
 
-      - name: Checkov — IaC security
+      - name: Checkov — CloudFormation IaC security
         uses: bridgecrewio/checkov-action@master
         with:
-          directory: terraform
-          framework: terraform
-          soft_fail: true   # warn only; set to false to enforce
+          directory: cfn
+          framework: cloudformation
+          soft_fail: true

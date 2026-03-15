@@ -1,0 +1,454 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  AI Development Environment — EC2 (Amazon Linux 2023)
+  Includes: code-server, Claude Code CLI, AWS CLI v2, Node.js 20,
+            Git, Docker, Amazon Bedrock (Claude Sonnet) connection
+  IMDSv2 enforced / IAM Role (least privilege) / EBS encrypted
+
+# ============================================================
+# Parameters
+# ============================================================
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: ai-dev-env
+    Description: Prefix applied to all resource names
+
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.small
+      - t3.medium
+      - t3.large
+      - m6i.xlarge
+    Description: EC2 instance type (t3.medium recommended)
+
+  RootVolumeSize:
+    Type: Number
+    Default: 30
+    MinValue: 20
+    MaxValue: 200
+    Description: Root EBS volume size (GB)
+
+  VpcCidr:
+    Type: String
+    Default: "10.0.0.0/16"
+    Description: VPC CIDR block
+
+  SubnetCidr:
+    Type: String
+    Default: "10.0.1.0/24"
+    Description: Public subnet CIDR block
+
+  AllowedCidr:
+    Type: String
+    Default: "0.0.0.0/0"
+    Description: >
+      CIDR allowed to reach SSH (22) and code-server (8080).
+      IMPORTANT: restrict to your IP (e.g. 203.0.113.10/32)
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: EC2 Key Pair name for SSH. Leave blank to skip (use SSM Session Manager instead)
+
+  CodeServerPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: Password for code-server browser UI (min 8 chars)
+
+  AwsRegion:
+    Type: String
+    Default: ap-northeast-1
+    Description: AWS region for Bedrock (should match stack region)
+
+# ============================================================
+# Conditions
+# ============================================================
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+
+# ============================================================
+# Mappings — Amazon Linux 2023 AMI (ap-northeast-1)
+# Using SSM Parameter to always get latest AL2023 AMI
+# ============================================================
+
+# ============================================================
+# Resources
+# ============================================================
+Resources:
+
+  # ── VPC ────────────────────────────────────────────────────
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-vpc"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # ── Internet Gateway ────────────────────────────────────────
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-igw"
+        - Key: Project
+          Value: !Ref ProjectName
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ── Public Subnet ───────────────────────────────────────────
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetCidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-subnet-public"
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # ── Route Table ─────────────────────────────────────────────
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-rt-public"
+        - Key: Project
+          Value: !Ref ProjectName
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # ── Security Group ──────────────────────────────────────────
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${ProjectName}-sg"
+      GroupDescription: "AI Dev Env: SSH + code-server + HTTPS"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedCidr
+          Description: SSH
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: !Ref AllowedCidr
+          Description: code-server
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllowedCidr
+          Description: HTTPS (nginx)
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-sg"
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # ── IAM Role ────────────────────────────────────────────────
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-ec2-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  BedrockPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${ProjectName}-bedrock-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: BedrockInvoke
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource:
+              - !Sub "arn:aws:bedrock:${AwsRegion}::foundation-model/anthropic.claude-sonnet-4-5*"
+              - "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5*"
+              - "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-5*"
+          - Sid: BedrockList
+            Effect: Allow
+            Action:
+              - bedrock:ListFoundationModels
+              - bedrock:GetFoundationModel
+            Resource: "*"
+      Roles:
+        - !Ref EC2Role
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${ProjectName}-instance-profile"
+      Roles:
+        - !Ref EC2Role
+
+  # ── EC2 Instance ────────────────────────────────────────────
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      # Amazon Linux 2023 最新AMI (SSM Parameter Store経由で自動取得)
+      ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref "AWS::NoValue"]
+
+      # IMDSv2 (トークン必須)
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: enabled
+
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: !Ref RootVolumeSize
+            Encrypted: true
+            DeleteOnTermination: true
+
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # ============================================================
+          # User Data — Amazon Linux 2023
+          # IMDSv2 / code-server / Claude Code / Bedrock
+          # ============================================================
+          set -euo pipefail
+          exec > >(tee /var/log/user-data.log | logger -t user-data) 2>&1
+
+          echo "===== AI Dev Env Setup Start: $(date) ====="
+
+          # ── IMDSv2 token ───────────────────────────────────────
+          IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+            -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+          INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" \
+            http://169.254.169.254/latest/meta-data/instance-id)
+          PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" \
+            http://169.254.169.254/latest/meta-data/public-ipv4 || echo "N/A")
+          echo "Instance: $INSTANCE_ID / IP: $PUBLIC_IP"
+
+          # ── System update ──────────────────────────────────────
+          dnf update -y
+
+          # ── Core packages ──────────────────────────────────────
+          dnf install -y \
+            curl wget git unzip jq vim htop tmux \
+            gcc gcc-c++ make \
+            python3 python3-pip
+
+          # ── Docker ─────────────────────────────────────────────
+          dnf install -y docker
+          systemctl enable docker
+          systemctl start docker
+          usermod -aG docker ec2-user
+
+          # ── Node.js 20 ─────────────────────────────────────────
+          curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+          dnf install -y nodejs
+          npm install -g npm@latest
+
+          # ── AWS CLI v2 (AL2023はv2がデフォルトだが最新に更新) ──
+          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+            -o /tmp/awscli.zip
+          unzip -q /tmp/awscli.zip -d /tmp
+          /tmp/aws/install --update
+          rm -rf /tmp/awscli.zip /tmp/aws
+
+          # ── code-server ────────────────────────────────────────
+          CODE_SERVER_VERSION="4.23.1"
+          curl -fsSL "https://github.com/coder/code-server/releases/download/v${!CODE_SERVER_VERSION}/code-server_${!CODE_SERVER_VERSION}_amd64.deb" \
+            -o /tmp/code-server.deb
+
+          # AL2023はdpkgがないのでrpmに変換してインストール
+          dnf install -y alien || true
+          # fallback: curl install script
+          curl -fsSL https://code-server.dev/install.sh | sh -s -- --version ${!CODE_SERVER_VERSION}
+          rm -f /tmp/code-server.deb
+
+          # ── Claude Code CLI ────────────────────────────────────
+          npm install -g @anthropic-ai/claude-code
+
+          # ── code-server config ─────────────────────────────────
+          sudo -u ec2-user mkdir -p /home/ec2-user/.config/code-server
+          cat > /home/ec2-user/.config/code-server/config.yaml <<CSEOF
+          bind-addr: 0.0.0.0:8080
+          auth: password
+          password: ${CodeServerPassword}
+          cert: false
+          CSEOF
+          chown -R ec2-user:ec2-user /home/ec2-user/.config
+
+          # ── code-server systemd service ────────────────────────
+          cat > /etc/systemd/system/code-server.service <<SVCEOF
+          [Unit]
+          Description=code-server (Browser VSCode)
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=ec2-user
+          WorkingDirectory=/home/ec2-user/workspace
+          Environment=AWS_DEFAULT_REGION=${AwsRegion}
+          Environment=AWS_REGION=${AwsRegion}
+          Environment=CLAUDE_CODE_USE_BEDROCK=1
+          Environment=ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5
+          ExecStart=/usr/local/bin/code-server \
+            --config /home/ec2-user/.config/code-server/config.yaml \
+            /home/ec2-user/workspace
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+          SVCEOF
+
+          systemctl daemon-reload
+          systemctl enable code-server
+          systemctl start code-server
+
+          # ── Workspace & shell config ───────────────────────────
+          sudo -u ec2-user mkdir -p /home/ec2-user/workspace
+
+          cat >> /home/ec2-user/.bashrc <<'BASHEOF'
+
+          # ── AI Dev Env ────────────────────────────────────────
+          export AWS_DEFAULT_REGION=ap-northeast-1
+          export AWS_REGION=ap-northeast-1
+          export CLAUDE_CODE_USE_BEDROCK=1
+          export ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5
+
+          alias ll='ls -alF'
+          alias workspace='cd ~/workspace'
+          alias claude-check='aws bedrock list-foundation-models \
+            --region ap-northeast-1 \
+            --query "summaryList[?contains(modelId,\`claude\`)].modelId" \
+            --output table'
+          BASHEOF
+
+          # ── Claude Code project config ─────────────────────────
+          sudo -u ec2-user mkdir -p /home/ec2-user/workspace/.claude
+          cat > /home/ec2-user/workspace/.claude/settings.json <<CLEOF
+          {
+            "provider": "bedrock",
+            "model": "us.anthropic.claude-sonnet-4-5",
+            "region": "${AwsRegion}"
+          }
+          CLEOF
+          chown -R ec2-user:ec2-user /home/ec2-user/workspace
+
+          echo "===== Setup Complete: $(date) ====="
+          echo "code-server URL: http://$PUBLIC_IP:8080"
+
+      Tags:
+        - Key: Name
+          Value: !Ref ProjectName
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: ManagedBy
+          Value: cloudformation
+
+  # ── Elastic IP ──────────────────────────────────────────────
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref EC2Instance
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-eip"
+        - Key: Project
+          Value: !Ref ProjectName
+
+# ============================================================
+# Outputs
+# ============================================================
+Outputs:
+
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref EC2Instance
+    Export:
+      Name: !Sub "${ProjectName}-instance-id"
+
+  PublicIp:
+    Description: Elastic IP address
+    Value: !Ref ElasticIP
+    Export:
+      Name: !Sub "${ProjectName}-public-ip"
+
+  CodeServerUrl:
+    Description: code-server URL (HTTP)
+    Value: !Sub "http://${ElasticIP}:8080"
+
+  SshCommand:
+    Description: SSH connection command
+    Value: !Sub "ssh -i ~/.ssh/YOUR_KEY.pem ec2-user@${ElasticIP}"
+
+  SsmCommand:
+    Description: SSM Session Manager (SSH不要)
+    Value: !Sub "aws ssm start-session --target ${EC2Instance} --region ${AwsRegion}"
+
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref SecurityGroup
+
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
