@@ -141,9 +141,9 @@ Resources:
               - bedrock:InvokeModel
               - bedrock:InvokeModelWithResponseStream
             Resource:
-              - !Sub "arn:aws:bedrock:${AwsRegion}::foundation-model/anthropic.claude-sonnet-4-5*"
-              - "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5*"
-              - "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-sonnet-4-5*"
+              - "arn:aws:bedrock:*::foundation-model/anthropic.claude-*"
+              - "arn:aws:bedrock:*:*:inference-profile/*"
+              - "arn:aws:bedrock:*:aws:inference-profile/*"
           - Sid: BedrockList
             Effect: Allow
             Action:
@@ -267,7 +267,7 @@ Resources:
           Environment=AWS_DEFAULT_REGION=${AwsRegion}
           Environment=AWS_REGION=${AwsRegion}
           Environment=CLAUDE_CODE_USE_BEDROCK=1
-          Environment=ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0
+          Environment=ANTHROPIC_MODEL=jp.anthropic.claude-sonnet-4-6
           ExecStart=/usr/local/bin/code-server \
             --config /home/ec2-user/.config/code-server/config.yaml \
             /home/ec2-user/workspace
@@ -306,7 +306,7 @@ Resources:
           cat > /home/ec2-user/workspace/.claude/settings.json <<CLEOF
           {
             "provider": "bedrock",
-            "model": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+            "model": "jp.anthropic.claude-sonnet-4-6",
             "region": "${AwsRegion}"
           }
           CLEOF
