@@ -3,7 +3,7 @@ Description: >
   AI Development Environment — EC2 (Amazon Linux 2023)
   Includes: code-server, Claude Code CLI, AWS CLI v2, Node.js 20,
             Git, Docker, Amazon Bedrock (Claude Sonnet) connection
-  IMDSv2 enforced / IAM Role (least privilege) / EBS encrypted
+  既存VPC/Subnet使用 / IMDSv2 enforced / IAM Role (least privilege) / EBS encrypted
 
 # ============================================================
 # Parameters
@@ -32,15 +32,16 @@ Parameters:
     MaxValue: 200
     Description: Root EBS volume size (GB)
 
-  VpcCidr:
-    Type: String
-    Default: "10.0.0.0/16"
-    Description: VPC CIDR block
+  # ── 既存VPC/Subnet ─────────────────────────────────────────
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: 使用する既存VPCのID (例: vpc-xxxxxxxxxxxxxxxxx)
 
-  SubnetCidr:
-    Type: String
-    Default: "10.0.1.0/24"
-    Description: Public subnet CIDR block
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: >
+      使用する既存サブネットのID (例: subnet-xxxxxxxxxxxxxxxxx)
+      パブリックサブネット（インターネットGW付き）を指定してください
 
   AllowedCidr:
     Type: String
@@ -72,84 +73,9 @@ Conditions:
   HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
 
 # ============================================================
-# Mappings — Amazon Linux 2023 AMI (ap-northeast-1)
-# Using SSM Parameter to always get latest AL2023 AMI
-# ============================================================
-
-# ============================================================
 # Resources
 # ============================================================
 Resources:
-
-  # ── VPC ────────────────────────────────────────────────────
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: !Ref VpcCidr
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      Tags:
-        - Key: Name
-          Value: !Sub "${ProjectName}-vpc"
-        - Key: Project
-          Value: !Ref ProjectName
-        - Key: ManagedBy
-          Value: cloudformation
-
-  # ── Internet Gateway ────────────────────────────────────────
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Sub "${ProjectName}-igw"
-        - Key: Project
-          Value: !Ref ProjectName
-
-  VPCGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-  # ── Public Subnet ───────────────────────────────────────────
-  PublicSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: !Ref SubnetCidr
-      AvailabilityZone: !Select [0, !GetAZs ""]
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub "${ProjectName}-subnet-public"
-        - Key: Project
-          Value: !Ref ProjectName
-
-  # ── Route Table ─────────────────────────────────────────────
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub "${ProjectName}-rt-public"
-        - Key: Project
-          Value: !Ref ProjectName
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: VPCGatewayAttachment
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: "0.0.0.0/0"
-      GatewayId: !Ref InternetGateway
-
-  SubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref PublicRouteTable
 
   # ── Security Group ──────────────────────────────────────────
   SecurityGroup:
@@ -157,7 +83,7 @@ Resources:
     Properties:
       GroupName: !Sub "${ProjectName}-sg"
       GroupDescription: "AI Dev Env: SSH + code-server + HTTPS"
-      VpcId: !Ref VPC
+      VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -241,7 +167,7 @@ Resources:
       # Amazon Linux 2023 最新AMI (SSM Parameter Store経由で自動取得)
       ImageId: !Sub "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
       InstanceType: !Ref InstanceType
-      SubnetId: !Ref PublicSubnet
+      SubnetId: !Ref SubnetId
       SecurityGroupIds:
         - !Ref SecurityGroup
       IamInstanceProfile: !Ref EC2InstanceProfile
@@ -303,7 +229,7 @@ Resources:
           dnf install -y nodejs
           npm install -g npm@latest
 
-          # ── AWS CLI v2 (AL2023はv2がデフォルトだが最新に更新) ──
+          # ── AWS CLI v2 ─────────────────────────────────────────
           curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
             -o /tmp/awscli.zip
           unzip -q /tmp/awscli.zip -d /tmp
@@ -311,15 +237,7 @@ Resources:
           rm -rf /tmp/awscli.zip /tmp/aws
 
           # ── code-server ────────────────────────────────────────
-          CODE_SERVER_VERSION="4.23.1"
-          curl -fsSL "https://github.com/coder/code-server/releases/download/v${!CODE_SERVER_VERSION}/code-server_${!CODE_SERVER_VERSION}_amd64.deb" \
-            -o /tmp/code-server.deb
-
-          # AL2023はdpkgがないのでrpmに変換してインストール
-          dnf install -y alien || true
-          # fallback: curl install script
-          curl -fsSL https://code-server.dev/install.sh | sh -s -- --version ${!CODE_SERVER_VERSION}
-          rm -f /tmp/code-server.deb
+          curl -fsSL https://code-server.dev/install.sh | sh
 
           # ── Claude Code CLI ────────────────────────────────────
           npm install -g @anthropic-ai/claude-code
@@ -406,7 +324,6 @@ Resources:
   # ── Elastic IP ──────────────────────────────────────────────
   ElasticIP:
     Type: AWS::EC2::EIP
-    DependsOn: VPCGatewayAttachment
     Properties:
       Domain: vpc
       InstanceId: !Ref EC2Instance
@@ -450,5 +367,9 @@ Outputs:
     Value: !Ref SecurityGroup
 
   VpcId:
-    Description: VPC ID
-    Value: !Ref VPC
+    Description: 使用したVPC ID
+    Value: !Ref VpcId
+
+  SubnetId:
+    Description: 使用したSubnet ID
+    Value: !Ref SubnetId

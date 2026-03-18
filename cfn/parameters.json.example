@@ -1,8 +1,3 @@
-# ============================================================
-# cfn/parameters.json
-# CloudFormation パラメータファイル（aws cloudformation deployで使用）
-# Usage: cp parameters.json.example parameters.json && 編集
-# ============================================================
 [
   {
     "ParameterKey": "ProjectName",
@@ -17,12 +12,12 @@
     "ParameterValue": "30"
   },
   {
-    "ParameterKey": "VpcCidr",
-    "ParameterValue": "10.0.0.0/16"
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-xxxxxxxxxxxxxxxxx"
   },
   {
-    "ParameterKey": "SubnetCidr",
-    "ParameterValue": "10.0.1.0/24"
+    "ParameterKey": "SubnetId",
+    "ParameterValue": "subnet-xxxxxxxxxxxxxxxxx"
   },
   {
     "ParameterKey": "AllowedCidr",
