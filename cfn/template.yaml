@@ -210,11 +210,13 @@ Resources:
           echo "Instance: $INSTANCE_ID / IP: $PUBLIC_IP"
 
           # ── System update ──────────────────────────────────────
+          # curl-minimal と curl の競合を解消してからアップデート
+          dnf install -y --allowerasing curl
           dnf update -y
 
           # ── Core packages ──────────────────────────────────────
           dnf install -y \
-            curl wget git unzip jq vim htop tmux \
+            wget git unzip jq vim htop tmux \
             gcc gcc-c++ make \
             python3 python3-pip
 
@@ -265,7 +267,7 @@ Resources:
           Environment=AWS_DEFAULT_REGION=${AwsRegion}
           Environment=AWS_REGION=${AwsRegion}
           Environment=CLAUDE_CODE_USE_BEDROCK=1
-          Environment=ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5
+          Environment=ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0
           ExecStart=/usr/local/bin/code-server \
             --config /home/ec2-user/.config/code-server/config.yaml \
             /home/ec2-user/workspace
@@ -289,7 +291,7 @@ Resources:
           export AWS_DEFAULT_REGION=ap-northeast-1
           export AWS_REGION=ap-northeast-1
           export CLAUDE_CODE_USE_BEDROCK=1
-          export ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5
+          export ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0
 
           alias ll='ls -alF'
           alias workspace='cd ~/workspace'
@@ -304,7 +306,7 @@ Resources:
           cat > /home/ec2-user/workspace/.claude/settings.json <<CLEOF
           {
             "provider": "bedrock",
-            "model": "us.anthropic.claude-sonnet-4-5",
+            "model": "us.anthropic.claude-sonnet-4-20250514-v1:0",
             "region": "${AwsRegion}"
           }
           CLEOF
