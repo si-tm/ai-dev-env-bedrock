@@ -470,4 +470,3 @@ MIT License
 
 <p align="center">Built with ❤️ using Amazon Bedrock + Claude Code</p>
 
-https://nmpmsg-my.sharepoint.com/:f:/g/personal/azuma01_nmpmsg_onmicrosoft_com/IgBqCfs58Zm8To_wAo_DveXlAfUX4PGBnjx2RaW08EW_iKw?e=cFFbr8
