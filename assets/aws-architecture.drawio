@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-19T00:00:00.000Z" agent="Claude Code" version="21.0.0">
+  <diagram name="AWS Architecture" id="aws-ai-dev-env">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Internet -->
+        <mxCell id="internet" value="Internet" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.cisco.sites.generic_building;html=1;dashed=0;outline=0;labelPosition=bottom;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="internet_label" value="User / Browser" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="150" width="110" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- AWS Account boundary -->
+        <mxCell id="aws_account" value="AWS Account: 573576813930" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD7F32;fillColor=#FFFFFF;verticalAlign=top;align=center;spacingTop=25;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="250" y="40" width="1300" height="1050" as="geometry" />
+        </mxCell>
+
+        <!-- Region -->
+        <mxCell id="region" value="ap-northeast-1 (Tokyo)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#FF9900;fillColor=#FFFFFF;verticalAlign=top;align=left;spacingTop=25;fontStyle=1;" vertex="1" parent="aws_account">
+          <mxGeometry x="20" y="50" width="1260" height="980" as="geometry" />
+        </mxCell>
+
+        <!-- Internet Gateway -->
+        <mxCell id="igw" value="Internet Gateway" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=none;fillColor=#8C4FFF;labelBackgroundColor=#ffffff;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.internet_gateway;" vertex="1" parent="region">
+          <mxGeometry x="80" y="60" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="igw_label" value="Internet Gateway" style="text;html=1;align=center;" vertex="1" parent="region">
+          <mxGeometry x="55" y="125" width="110" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- VPC -->
+        <mxCell id="vpc" value="VPC (10.0.0.0/16)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc;strokeColor=#8C4FFF;fillColor=#F5F0FF;verticalAlign=top;align=left;spacingTop=25;fontStyle=1;" vertex="1" parent="region">
+          <mxGeometry x="220" y="50" width="780" height="740" as="geometry" />
+        </mxCell>
+
+        <!-- Public Subnet -->
+        <mxCell id="subnet" value="Public Subnet: 10.0.0.0/20 (ap-northeast-1a)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_public_subnet;strokeColor=#228B22;fillColor=#E8F5E9;verticalAlign=top;align=left;spacingTop=25;fontStyle=1;" vertex="1" parent="vpc">
+          <mxGeometry x="30" y="60" width="720" height="640" as="geometry" />
+        </mxCell>
+
+        <!-- Security Group -->
+        <mxCell id="sg" value="Security Group: ai-dev-env-sg&#xa;TCP:22 (SSH), TCP:8080 (code-server)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;strokeColor=#DD344C;fillColor=#FFF0F0;verticalAlign=top;align=left;spacingTop=25;" vertex="1" parent="subnet">
+          <mxGeometry x="20" y="60" width="680" height="560" as="geometry" />
+        </mxCell>
+
+        <!-- EC2 Instance -->
+        <mxCell id="ec2_box" value="EC2 Instance" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=none;fillColor=#EC7211;labelBackgroundColor=#ffffff;align=center;html=1;fontSize=12;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;" vertex="1" parent="sg">
+          <mxGeometry x="30" y="60" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2_info" value="i-0905a9a2593c30516&#xa;Type: t3.medium&#xa;OS: Amazon Linux 2023&#xa;Private IP: 10.0.0.33&#xa;Public IP: 54.64.5.84 (EIP)" style="text;html=1;align=left;verticalAlign=middle;spacingLeft=5;" vertex="1" parent="sg">
+          <mxGeometry x="100" y="60" width="280" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- code-server -->
+        <mxCell id="codeserver" value="code-server&#xa;:8080 (VS Code in Browser)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=#007BFF;fillColor=#E3F2FD;align=center;html=1;fontSize=11;rounded=1;" vertex="1" parent="sg">
+          <mxGeometry x="30" y="165" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Claude Code -->
+        <mxCell id="claudecode" value="Claude Code CLI&#xa;(@anthropic-ai/claude-code)&#xa;CLAUDE_CODE_USE_BEDROCK=1" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=#9B59B6;fillColor=#F3E5F5;align=center;html=1;fontSize=11;rounded=1;" vertex="1" parent="sg">
+          <mxGeometry x="245" y="165" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Docker -->
+        <mxCell id="docker" value="Docker&#xa;(Container Runtime)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=#0DB7ED;fillColor=#E0F7FA;align=center;html=1;fontSize=11;rounded=1;" vertex="1" parent="sg">
+          <mxGeometry x="480" y="165" width="170" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- SSM Agent -->
+        <mxCell id="ssmagent" value="Amazon SSM Agent" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=#E67E22;fillColor=#FDEBD0;align=center;html=1;fontSize=11;rounded=1;" vertex="1" parent="sg">
+          <mxGeometry x="480" y="230" width="170" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- MCP Servers group -->
+        <mxCell id="mcp_group" value="MCP Servers (Model Context Protocol)" style="swimlane;fontStyle=1;fontSize=11;fillColor=#DDEEFF;strokeColor=#2980B9;" vertex="1" parent="sg">
+          <mxGeometry x="30" y="235" width="430" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp1" value="awslabs.core-mcp-server&#xa;AWS core guidance" style="rounded=1;fillColor=#BDD7EE;strokeColor=#2E75B6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="mcp_group">
+          <mxGeometry x="10" y="30" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp2" value="awslabs.cdk-mcp-server&#xa;CDK construct guidance" style="rounded=1;fillColor=#BDD7EE;strokeColor=#2E75B6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="mcp_group">
+          <mxGeometry x="220" y="30" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp3" value="awslabs.cfn-mcp-server&#xa;CloudFormation CRUD" style="rounded=1;fillColor=#BDD7EE;strokeColor=#2E75B6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="mcp_group">
+          <mxGeometry x="10" y="80" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp4" value="awslabs.aws-pricing-mcp-server&#xa;Pricing analysis" style="rounded=1;fillColor=#BDD7EE;strokeColor=#2E75B6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="mcp_group">
+          <mxGeometry x="220" y="80" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp_note" value="Transport: stdio | Managed by: Claude Code" style="text;html=1;fontSize=10;fontStyle=2;align=center;" vertex="1" parent="mcp_group">
+          <mxGeometry x="10" y="130" width="410" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Elastic IP -->
+        <mxCell id="eip" value="Elastic IP&#xa;54.64.5.84" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=none;fillColor=#8C4FFF;labelBackgroundColor=#ffffff;align=center;html=1;fontSize=11;rounded=1;" vertex="1" parent="region">
+          <mxGeometry x="110" y="220" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- IAM Group -->
+        <mxCell id="iam_group" value="IAM" style="swimlane;fontStyle=1;fontSize=12;fillColor=#FDEBD0;strokeColor=#E67E22;" vertex="1" parent="region">
+          <mxGeometry x="1060" y="60" width="180" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="iam_profile" value="Instance Profile&#xa;ai-dev-env-instance-profile" style="rounded=1;fillColor=#FAD7A0;strokeColor=#E67E22;fontSize=10;" vertex="1" parent="iam_group">
+          <mxGeometry x="10" y="35" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="iam_role" value="IAM Role&#xa;ai-dev-env-ec2-role" style="rounded=1;fillColor=#FAD7A0;strokeColor=#E67E22;fontSize=10;" vertex="1" parent="iam_group">
+          <mxGeometry x="10" y="90" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="iam_policy" value="Permissions:&#xa;bedrock:ListFoundationModels&#xa;bedrock:ListInferenceProfiles&#xa;bedrock:InvokeModel*" style="text;html=1;fontSize=9;align=left;" vertex="1" parent="iam_group">
+          <mxGeometry x="10" y="135" width="165" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Amazon Bedrock -->
+        <mxCell id="bedrock_group" value="Amazon Bedrock" style="swimlane;fontStyle=1;fontSize=12;fillColor=#F3E5F5;strokeColor=#9B59B6;" vertex="1" parent="region">
+          <mxGeometry x="1060" y="300" width="180" height="480" as="geometry" />
+        </mxCell>
+        <mxCell id="bedrock_icon" value="Amazon Bedrock&#xa;(Managed Service)" style="outlineConnect=0;fontColor=#232F3E;gradientColor=none;strokeColor=none;fillColor=#9B59B6;labelBackgroundColor=#ffffff;align=center;html=1;fontSize=10;rounded=1;fontStyle=0;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="30" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bedrock_xregion" value="Cross-region Inference&#xa;APAC Profile&#xa;(ap-northeast-1/2&#xa;ap-southeast-1/2&#xa;ap-south-1)" style="rounded=1;fillColor=#E8D5F5;strokeColor=#9B59B6;fontSize=10;align=left;spacingLeft=5;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="80" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="model1" value="claude-sonnet-4-6 ACTIVE" style="rounded=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontSize=9;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="175" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="model2" value="claude-sonnet-4-5 ACTIVE" style="rounded=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontSize=9;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="215" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="model3" value="claude-haiku-4-5 ACTIVE" style="rounded=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontSize=9;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="255" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="model4" value="claude-opus-4-6 ACTIVE" style="rounded=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontSize=9;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="295" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="model5" value="claude-3-5-sonnet-v2 ACTIVE" style="rounded=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontSize=9;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="335" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="model6" value="claude-opus-4-5 ACTIVE" style="rounded=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontSize=9;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="375" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="model7" value="claude-3-haiku ACTIVE" style="rounded=1;fillColor=#D7BDE2;strokeColor=#8E44AD;fontSize=9;" vertex="1" parent="bedrock_group">
+          <mxGeometry x="10" y="415" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Connections -->
+        <!-- User to IGW -->
+        <mxCell id="edge1" value="HTTPS :8080 / SSH :22" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" source="internet" target="igw" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- IGW to EIP -->
+        <mxCell id="edge2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="igw" target="eip" parent="region">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EIP to EC2 -->
+        <mxCell id="edge3" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="eip" target="ec2_box" parent="region">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- EC2 to IAM -->
+        <mxCell id="edge4" value="Assumes Role" style="edgeStyle=orthogonalEdgeStyle;dashed=1;html=1;fontSize=10;" edge="1" source="ec2_box" target="iam_profile" parent="region">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Claude Code to Bedrock -->
+        <mxCell id="edge5" value="bedrock:InvokeModel&#xa;(CLAUDE_CODE_USE_BEDROCK=1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;strokeColor=#9B59B6;" edge="1" source="claudecode" target="bedrock_group" parent="region">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- IAM Role to Policy -->
+        <mxCell id="edge6" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" source="iam_profile" target="iam_role" parent="iam_group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
